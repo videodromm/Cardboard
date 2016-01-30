@@ -1,138 +1,198 @@
 #include "ofApp.h"
 
-	
 //--------------------------------------------------------------
-void ofApp::setup(){
+void ofApp::setup() {
+	ofSetOrientation(OF_ORIENTATION_90_LEFT);
+	ofSetLogLevel(OF_LOG_VERBOSE);
+	ofBackground(0, 0, 0);
 	ofSetVerticalSync(true);
-	
-	// we add this listener before setting up so the initial circle resolution is correct
-	circleResolution.addListener(this, &ofApp::circleResolutionChanged);
-	ringButton.addListener(this,&ofApp::ringButtonPressed);
+	ofSetFrameRate(60);
 
-	// change default sizes for ofxGui so it's usable in small/high density screens
-	ofxGuiSetFont("Questrial-Regular.ttf",18,true,true);
-	ofxGuiSetTextPadding(20);
-	ofxGuiSetDefaultWidth(300);
-	ofxGuiSetDefaultHeight(40);
+	planet.setUseVbo(false);
+	planet.set(1500, 50);
+	planet.setPosition(0, 0, 0);
 
-	gui.setup("panel"); // most of the time you don't need a name but don't forget to call setup
-	gui.add(filled.set("bFill", true));
-	gui.add(radius.set( "radius", 140, 10, 300 ));
-	gui.add(center.set("center",ofVec2f(ofGetWidth()*.5,ofGetHeight()*.5),ofVec2f(0,0),ofVec2f(ofGetWidth(),ofGetHeight())));
-	gui.add(color.set("color",ofColor(100,100,140),ofColor(0,0),ofColor(255,255)));
-	gui.add(circleResolution.set("circleRes", 5, 3, 90));
-	gui.add(twoCircles.setup("twoCircles"));
-	gui.add(ringButton.setup("ring"));
-	gui.add(screenSize.set("screenSize", ofToString(ofGetWidth()) + "x" + ofToString(ofGetHeight())));
-	
-	bHide = true;
+	easycam.setDistance(20);
+	cam.setPosition(0, 0, 0);
 
-	ring.loadSound("ring.wav");
+	ofxAccelerometer.setup();
+	ofxRegisterAccelEvents(this);
+
+	tracking.reset();
+	invert = ofNode();
+	node = ofNode();
+	view = ofMatrix4x4();
 }
 
-//--------------------------------------------------------------
-void ofApp::exit(){
-	ringButton.removeListener(this,&ofApp::ringButtonPressed);
+void ofApp::accelerationChanged(SensorEvent & event) {
+	accelEvent = event;
+	tracking.processSensorEvent(accelEvent);
 }
 
-//--------------------------------------------------------------
-void ofApp::circleResolutionChanged(int & circleResolution){
-	ofSetCircleResolution(circleResolution);
+void ofApp::gyroChanged(SensorEvent & event) {
+	gyroEvent = event;
+	tracking.processSensorEvent(gyroEvent);
 }
+void ofApp::magChanged(SensorEvent & event) {
+//	gyroEvent = event;
 
-//--------------------------------------------------------------
-void ofApp::ringButtonPressed(){
-	ring.play();
+//tracking.processSensorEvent(event);
+//	ofLog()<<"magChanged "<<event.reading<<endl;
 }
-
 //--------------------------------------------------------------
-void ofApp::update(){
-}
-
-//--------------------------------------------------------------
-void ofApp::draw(){
-    ofBackgroundGradient(ofColor::white, ofColor::gray);
-    
-	if( filled ){
-		ofFill();
-	}else{
-		ofNoFill();
-	}
-
-	ofSetColor(color);
-	if(twoCircles){
-		ofCircle(center->x-radius*.5, center->y, radius );
-		ofCircle(center->x+radius*.5, center->y, radius );
-	}else{
-		ofCircle((ofVec2f)center, radius );
-	}
-	
-	if( bHide ){
-		gui.draw();
-	}
-}
-
-//--------------------------------------------------------------
-void ofApp::keyPressed(int key){
-	if( key == 'h' ){
-		bHide = !bHide;
-	}
-	if(key == 's') {
-		gui.saveToFile("settings.xml");
-	}
-	if(key == 'l') {
-		gui.loadFromFile("settings.xml");
-	}
-	if(key == ' '){
-		color = ofColor(255);
-	}
-}
-
-//--------------------------------------------------------------
-void ofApp::keyReleased(int key){
-	
-}
-
-//--------------------------------------------------------------
-void ofApp::mouseMoved(int x, int y ){
-	
-}
-
-//--------------------------------------------------------------
-void ofApp::mouseDragged(int x, int y, int button){
-}
-
-//--------------------------------------------------------------
-void ofApp::mousePressed(int x, int y, int button){
-	
-}
-
-//--------------------------------------------------------------
-void ofApp::mouseReleased(int x, int y, int button){
-	
-}
-
-//--------------------------------------------------------------
-void ofApp::mouseEntered(int x, int y){
+void ofApp::update() {
 
 }
 
 //--------------------------------------------------------------
-void ofApp::mouseExited(int x, int y){
+void ofApp::draw() {
+
+	ofBackground(0, 0, 0);
+
+	ofMatrix4x4 headView;
+	headView.makeIdentityMatrix();
+	headView = tracking.getLastHeadView(transform.getHeadView());
+	ofDrawBitmapStringHighlight("Rot :" + ofToString(headView.getRotate()), 10,
+			500);
+
+//    ofMatrix4x4 translate;
+//    translate.makeTranslationMatrix(ofVec3f(0.06, 0, 0));
+//    view.makeIdentityMatrix();
+//    view*=headView;
+
+	transform.setMatrix(headView);
+
+	invert = node;
+	node.setTransformMatrix(headView);
+
+	//rot.slerp(0.99, invert.getOrientationQuat(), node.getOrientationQuat());
+
+	rot = node.getOrientationQuat();
+
+	cam.setPosition(-0.6 / 2.0, 0, 0);
+//    cam.setOrientation(rot);
+
+	ofSetColor(255, 0, 255);
+	ofDrawBitmapStringHighlight(
+			"HeadView: " + ofToString(transform.getHeadView(), 10), 10, 100);
+
+	ofDrawBitmapStringHighlight("Rot :" + ofToString(node.getOrientationQuat()),
+			10, 400);
+
+	ofDrawBitmapStringHighlight("Cardboard Camera",
+			ofGetWidth() - ofGetHeight(), ofGetHeight() / 2 - 20);
+	cam.begin(ofRectangle(0, 0, ofGetWidth() / 2, ofGetHeight()));
+
+	ofPushMatrix();
+	ofVec3f axis;
+	float angle;
+	rot.getRotate(angle, axis);
+	ofRotate(angle, axis.x, axis.y, axis.z);
+	ofSetColor(255, 0, 255);
+	planet.drawWireframe();
+	ofSetColor(255, 255, 0);
+	ofDrawBox(ofVec3f(-50, 0, 0), 10, 10, 10);
+	ofDrawBox(ofVec3f(-50, -50, 0), 10, 10, 10);
+	ofDrawBox(ofVec3f(-50, -50, -50), 10, 10, 10);
+	ofPopMatrix();
+	cam.end();
+
+	cam.setPosition(0.6 / 2.0, 0, 0);
+	cam.begin(
+			ofRectangle(ofGetWidth() / 2, 0, ofGetWidth() / 2, ofGetHeight()));
+	ofSetColor(255, 0, 255);
+	ofPushMatrix();
+	rot.getRotate(angle, axis);
+	ofRotate(angle, axis.x, axis.y, axis.z);
+	planet.drawWireframe();
+	ofSetColor(255, 255, 0);
+	ofDrawBox(ofVec3f(-50, 0, 0), 10, 10, 10);
+	ofDrawBox(ofVec3f(-50, -50, 0), 10, 10, 10);
+	ofDrawBox(ofVec3f(-50, -50, -50), 10, 10, 10);
+	ofPopMatrix();
+	cam.end();
+}
+
+//--------------------------------------------------------------
+void ofApp::keyPressed(int key) {
+}
+
+//--------------------------------------------------------------
+void ofApp::keyReleased(int key) {
 
 }
 
 //--------------------------------------------------------------
-void ofApp::windowResized(int w, int h){
-    screenSize = ofToString(w) + "x" + ofToString(h);
+void ofApp::windowResized(int w, int h) {
+	ofLog() << "windowResized" << endl;
 }
 
 //--------------------------------------------------------------
-void ofApp::gotMessage(ofMessage msg){
-	
+void ofApp::touchDown(int x, int y, int id) {
+
 }
 
 //--------------------------------------------------------------
-void ofApp::dragEvent(ofDragInfo dragInfo){ 
-	
+void ofApp::touchMoved(int x, int y, int id) {
+
 }
+
+//--------------------------------------------------------------
+void ofApp::touchUp(int x, int y, int id) {
+	tracking.reset();
+
+}
+
+//--------------------------------------------------------------
+void ofApp::touchDoubleTap(int x, int y, int id) {
+
+}
+
+//--------------------------------------------------------------
+void ofApp::touchCancelled(int x, int y, int id) {
+
+}
+
+//--------------------------------------------------------------
+void ofApp::swipe(ofxAndroidSwipeDir swipeDir, int id) {
+
+}
+
+//--------------------------------------------------------------
+void ofApp::pause() {
+
+}
+
+//--------------------------------------------------------------
+void ofApp::stop() {
+
+}
+
+//--------------------------------------------------------------
+void ofApp::resume() {
+
+}
+
+//--------------------------------------------------------------
+void ofApp::reloadTextures() {
+	planet.setUseVbo(false);
+	planet.set(1000, 50);
+	planet.setPosition(0, 0, 0);
+}
+
+//--------------------------------------------------------------
+bool ofApp::backPressed() {
+	return false;
+}
+
+//--------------------------------------------------------------
+void ofApp::okPressed() {
+
+}
+;
+
+//--------------------------------------------------------------
+void ofApp::cancelPressed() {
+
+}
+;

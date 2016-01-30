@@ -1,4 +1,4 @@
-package cc.openframeworks.androidGuiExample;
+package com.videodromm.cardboard;
 
 import android.os.Bundle;
 import android.view.KeyEvent;

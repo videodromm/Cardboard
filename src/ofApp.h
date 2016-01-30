@@ -1,45 +1,59 @@
 #pragma once
-
 #include "ofMain.h"
-#include "ofxGui.h"
-
-class ofApp : public ofBaseApp{
+#include "ofxAndroid.h"
+#include "headTracking.h"
+#include "headTransform.h"
+#include "ofxGameCamera.h"
+#include "ofxAccelerometer.h"
+class ofApp : public ofxAndroidApp{
 	
-public:
-	void setup();
-	void update();
-	void draw();
-	
-	void exit();
+	public:
+		
+		void setup();
+		void update();
+		void draw();
+		
+		void keyPressed(int key);
+		void keyReleased(int key);
+		void windowResized(int w, int h);
 
-	void keyPressed(int key);
-	void keyReleased(int key);
-	void mouseMoved(int x, int y );
-	void mouseDragged(int x, int y, int button);
-	void mousePressed(int x, int y, int button);
-	void mouseReleased(int x, int y, int button);
-	void mouseEntered(int x, int y);
-	void mouseExited(int x, int y);
-	void windowResized(int w, int h);
-	void dragEvent(ofDragInfo dragInfo);
-	void gotMessage(ofMessage msg);		
+		void touchDown(int x, int y, int id);
+		void touchMoved(int x, int y, int id);
+		void touchUp(int x, int y, int id);
+		void touchDoubleTap(int x, int y, int id);
+		void touchCancelled(int x, int y, int id);
+		void swipe(ofxAndroidSwipeDir swipeDir, int id);
 
-	void circleResolutionChanged(int & circleResolution);
-	void ringButtonPressed();
+		void pause();
+		void stop();
+		void resume();
+		void reloadTextures();
 
-	bool bHide;
+		bool backPressed();
+		void okPressed();
+		void cancelPressed();
 
-	ofParameter<float> radius;
-	ofParameter<ofColor> color;
-	ofParameter<ofVec2f> center;
-	ofParameter<int> circleResolution;
-	ofParameter<bool> filled;
-	ofxButton twoCircles;
-	ofxButton ringButton;
-	ofParameter<string> screenSize;
+		void accelerationChanged(SensorEvent & event);
+		void gyroChanged(SensorEvent & event);
+		void magChanged(SensorEvent & event);
 
-	ofxPanel gui;
 
-	ofSoundPlayer ring;
+
+		SensorEvent gyroEvent;
+		SensorEvent accelEvent;
+		ofTrueTypeFont font;
+		headTracking tracking;
+		headTransform transform;
+
+		ofCamera cam;
+		ofSpherePrimitive planet;
+
+		ofNode node;
+		ofNode invert;
+		ofEasyCam easycam;
+		ofMatrix4x4 view;
+
+		ofQuaternion rot;
 };
+
 
